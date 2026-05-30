@@ -1,0 +1,38 @@
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environments / secrets
+.env
+.env.*
+# Lokale Symcon-Config (E-Mail/URL) – Passwort nie eintragen, wird beim Start abgefragt
+local-config.env
+
+# Node
+**/node_modules/
+**/dist/
+# Ausnahme: vorgebauter MCP-Server für Git-Installation (SymBox hat oft kein Node)
+!libs/mcp-server/dist/
+!libs/mcp-server/dist/**
+# Wissensbasis (gelernte Geräte-Zuordnungen) – pro Nutzer/Instanz, nicht committen
+libs/mcp-server/data/
+# Lokale TLS-Zertifikate (HTTPS, self-signed)
+libs/mcp-server/certs/*.crt
+libs/mcp-server/certs/*.key
+libs/mcp-server/certs/*.pem
+**/.cache/
+
+# IDEs
+.idea/
+.vscode/
+
+# MCPB-Build (optional committen für Distribution)
+mcpb/*.mcpb
+
+# OS / tooling
+*.swp

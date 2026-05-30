@@ -1,0 +1,5 @@
+node_modules/
+# dist/ wird ins Repo committed, damit Symcon per Git die vorgebauten Dateien bekommt
+*.log
+.env
+.env.*

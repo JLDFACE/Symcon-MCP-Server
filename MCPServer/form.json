@@ -1,0 +1,42 @@
+{
+  "elements": [
+    {
+      "type": "Label",
+      "caption": "TCP-Port, auf dem der MCP-Server lauscht. MCP-Clients (z. B. Claude, andere KI-Agenten) verbinden sich zu diesem Port. Beispiel: 4096."
+    },
+    {
+      "type": "NumberSpinner",
+      "name": "Port",
+      "caption": "Port",
+      "minimum": 1024,
+      "maximum": 65535
+    },
+    {
+      "type": "Label",
+      "caption": "Basis-URL der Symcon JSON-RPC-API. Läuft Symcon auf derselben Box, z. B.: http://127.0.0.1:3777/api/"
+    },
+    {
+      "type": "ValidationTextBox",
+      "name": "SymconApiUrl",
+      "caption": "Symcon-API-URL"
+    },
+    {
+      "type": "Label",
+      "caption": "Beim ersten \"Änderungen übernehmen\" wird automatisch ein API-Key erzeugt und hier angezeigt. Key kopieren und in Claude oder anderen MCP-Client eintragen (Header \"Authorization: Bearer <Key>\" oder \"X-MCP-API-Key: <Key>\"). Leer lassen = keine Authentifizierung (unsicher im Netz)."
+    },
+    {
+      "type": "ValidationTextBox",
+      "name": "ApiKey",
+      "caption": "API-Key (optional)"
+    },
+    {
+      "type": "Label",
+      "caption": "Wenn aktiviert, startet der MCP-Server beim Klick auf \"Änderungen übernehmen\". Deaktiviert oder erneutes Übernehmen beendet ihn."
+    },
+    {
+      "type": "CheckBox",
+      "name": "Active",
+      "caption": "Aktiv"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "symcon-mcpb",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MCP Bundle Launcher for Symcon Smart Home (stdio→streamable-http)"
+}

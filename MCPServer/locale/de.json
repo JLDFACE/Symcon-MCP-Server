@@ -1,0 +1,14 @@
+{
+  "MCP Server": {
+    "Port": "Port",
+    "PortBeschreibung": "TCP-Port, auf dem der MCP-Server lauscht. MCP-Clients (z. B. Claude, andere KI-Agenten) verbinden sich zu diesem Port. Beispiel: 4096.",
+    "SymconApiUrl": "Symcon-API-URL",
+    "SymconApiUrlBeschreibung": "Basis-URL der Symcon JSON-RPC-API. Läuft Symcon auf derselben Box, z. B.: http://127.0.0.1:3777/api/",
+    "Active": "Aktiv",
+    "ActiveBeschreibung": "Wenn aktiviert, startet der MCP-Server beim Klick auf „Änderungen übernehmen“. Deaktiviert oder erneutes Übernehmen beendet ihn.",
+    "ProcessStarted": "MCP-Server gestartet",
+    "ProcessStopped": "MCP-Server beendet",
+    "InvalidPort": "Ungültiger Port",
+    "InvalidApiUrl": "Ungültige API-URL"
+  }
+}

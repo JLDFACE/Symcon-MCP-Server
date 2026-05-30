@@ -1,0 +1,78 @@
+{
+  "manifest_version": "0.3",
+  "name": "symcon-smart-home",
+  "display_name": "Symcon Smart Home",
+  "version": "1.0.0",
+  "description": "Steuere dein IP-Symcon Smart Home per Sprache in Claude – Lichter, Schalter, Geräte.",
+  "long_description": "Verbinde Claude mit deinem IP-Symcon (z. B. SymBox). Der MCP-Server muss unter einer URL laufen (Streamable HTTP). Diese Erweiterung startet einen lokalen Adapter (stdio), der sich mit deinem Symcon MCP-Server verbindet. Du kannst Lichter schalten, Geräte lernen („Büro Licht“) und den Objektbaum erkunden.",
+  "author": {
+    "name": "Niko Sinthern"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "URI": "${user_config.server_url}",
+        "MCP_NAME": "symcon",
+        "BEARER_TOKEN": "${user_config.bearer_token}"
+      }
+    }
+  },
+  "tools_generated": true,
+  "tools": [
+    { "name": "symcon_ping", "description": "Verbindungs-/Auth-Test zur Symcon-API" },
+    { "name": "symcon_get_value", "description": "Liest den Wert einer Symcon-Variable" },
+    { "name": "symcon_set_value", "description": "Setzt den Wert einer Symcon-Variable" },
+    { "name": "symcon_request_action", "description": "Führt die Aktion einer Variable aus (z. B. Licht an/aus)" },
+    { "name": "symcon_get_object", "description": "Objekt-Infos zu einer Objekt-ID" },
+    { "name": "symcon_get_children", "description": "Kinder-IDs eines Objekts (objectId 0 = Root)" },
+    { "name": "symcon_run_script", "description": "Führt ein Symcon-Skript aus" },
+    { "name": "symcon_get_object_id_by_name", "description": "Objekt-ID anhand des Namens ermitteln" },
+    { "name": "symcon_get_variable", "description": "Variablen-Infos (Typ, Wert)" },
+    { "name": "symcon_get_object_tree", "description": "Objektbaum ab Wurzel (Discovery)" },
+    { "name": "symcon_control_device", "description": "Gerät per Ort und Name steuern (Sprachsteuerung)" },
+    { "name": "symcon_knowledge_get", "description": "Gelernte Geräte-Zuordnungen (Wissensbasis)" },
+    { "name": "symcon_knowledge_set", "description": "Geräte-Zuordnung lernen und speichern" },
+    { "name": "symcon_resolve_device", "description": "Nutzerphrase (z. B. „Büro Licht“) in VariableID auflösen" },
+    { "name": "symcon_get_variable_by_path", "description": "VariableID anhand Pfad im Objektbaum ermitteln" },
+    { "name": "symcon_automation_get_or_create_folder", "description": "Ordner für MCP-Automationen (Thema/Raum) anlegen oder abrufen" },
+    { "name": "symcon_schedule_once", "description": "Einmalige zeitverzögerte Aktion (z. B. Rolllade in 10 Min auf)" },
+    { "name": "symcon_script_create", "description": "PHP-Skript in Symcon anlegen" },
+    { "name": "symcon_script_set_content", "description": "Skript-Inhalt aktualisieren" },
+    { "name": "symcon_script_delete", "description": "Skript löschen" },
+    { "name": "symcon_event_create_cyclic", "description": "Zyklisches Event anlegen (Zeitplan)" },
+    { "name": "symcon_event_delete", "description": "Event löschen" },
+    { "name": "symcon_event_get", "description": "Event-Infos abrufen" },
+    { "name": "symcon_automation_list", "description": "Registrierte Automationen auflisten (vor Anlegen prüfen)" },
+    { "name": "symcon_automation_register", "description": "Automation in Registry eintragen" },
+    { "name": "symcon_automation_unregister", "description": "Automation aus Registry entfernen" }
+  ],
+  "keywords": ["symcon", "smart home", "IP-Symcon", "SymBox", "MCP"],
+  "license": "MIT",
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": ["darwin", "win32"],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "user_config": {
+    "server_url": {
+      "type": "string",
+      "title": "Symcon MCP-Server URL",
+      "description": "URL deines laufenden Symcon MCP-Servers (Streamable HTTP), z. B. http://127.0.0.1:4096 oder http://SYMBOX-IP:4096",
+      "default": "http://127.0.0.1:4096",
+      "required": true
+    },
+    "bearer_token": {
+      "type": "string",
+      "title": "Bearer Token (optional)",
+      "description": "Falls dein MCP-Server einen API-Key verlangt (Authorization: Bearer …)",
+      "sensitive": true,
+      "required": false
+    }
+  }
+}
