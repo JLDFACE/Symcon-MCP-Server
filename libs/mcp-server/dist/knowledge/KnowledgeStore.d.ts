@@ -1,23 +1,32 @@
 /**
- * Persistente Wissensbasis: Geräte-Zuordnungen (z. B. „Büro Licht“ → Variable Zustand von EG-BU-LI-1).
+ * Persistente Wissensbasis: Geräte-Zuordnungen, Konventionen und Steuerungsregeln.
  * Wird vom MCP-Server gelesen/geschrieben, damit die KI gelernte Zuordnungen nutzen kann.
  */
 export interface DeviceMapping {
-    /** Eindeutige ID (z. B. "buero-licht") */
     id: string;
-    /** Nutzer-Label für Sprache: "Büro Licht", "Bürolicht", "Licht im Büro" */
     userLabel: string;
-    /** Symcon VariableID (für SetValue/RequestAction) */
     variableId: number;
-    /** Name der Variable in Symcon (z. B. "Zustand") */
     variableName: string;
-    /** Optional: Pfad im Objektbaum (z. B. "Räume/Erdgeschoss/Büro/EG-BU-LI-1/Zustand") */
     path?: string;
-    /** Optional: ObjectID des übergeordneten Geräts (z. B. EG-BU-LI-1) */
     objectId?: number;
+}
+export interface Convention {
+    key: string;
+    meaning: string;
+    description?: string;
+}
+export interface ControlRule {
+    variableId: number;
+    variableName?: string;
+    deviceType?: string;
+    actions: Record<string, number | boolean>;
+    source?: string;
+    note?: string;
 }
 export interface KnowledgeData {
     deviceMappings: DeviceMapping[];
+    conventions: Convention[];
+    controlRules: ControlRule[];
 }
 export declare class KnowledgeStore {
     private filePath;
@@ -29,8 +38,14 @@ export declare class KnowledgeStore {
     addOrUpdateMapping(mapping: Omit<DeviceMapping, 'id'> & {
         id?: string;
     }): Promise<DeviceMapping>;
-    /** Sucht anhand eines Nutzer-Phrase (z. B. "Büro Licht", "Licht im Büro") eine passende Zuordnung. */
     resolve(userPhrase: string): Promise<DeviceMapping | null>;
+    getConventions(): Promise<Convention[]>;
+    addOrUpdateConvention(convention: Convention): Promise<Convention>;
+    getControlRules(): Promise<ControlRule[]>;
+    addOrUpdateControlRule(rule: ControlRule): Promise<ControlRule>;
+    getControlRuleByVariableId(variableId: number): Promise<ControlRule | null>;
+    /** Tauscht auf/zu-Werte (und Varianten) wenn der User sagt „das war falsch rum". */
+    correctDirection(variableId: number, note?: string): Promise<ControlRule | null>;
     private slug;
     private normalize;
 }

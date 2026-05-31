@@ -1,40 +1,41 @@
 /**
- * Persistente Wissensbasis: Geräte-Zuordnungen (z. B. „Büro Licht“ → Variable Zustand von EG-BU-LI-1).
+ * Persistente Wissensbasis: Geräte-Zuordnungen, Konventionen und Steuerungsregeln.
  * Wird vom MCP-Server gelesen/geschrieben, damit die KI gelernte Zuordnungen nutzen kann.
  */
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
 export interface DeviceMapping {
-  /** Eindeutige ID (z. B. "buero-licht") */
   id: string;
-  /** Nutzer-Label für Sprache: "Büro Licht", "Bürolicht", "Licht im Büro" */
   userLabel: string;
-  /** Symcon VariableID (für SetValue/RequestAction) */
   variableId: number;
-  /** Name der Variable in Symcon (z. B. "Zustand") */
   variableName: string;
-  /** Optional: Pfad im Objektbaum (z. B. "Räume/Erdgeschoss/Büro/EG-BU-LI-1/Zustand") */
   path?: string;
-  /** Optional: ObjectID des übergeordneten Geräts (z. B. EG-BU-LI-1) */
   objectId?: number;
+}
+
+export interface Convention {
+  key: string;
+  meaning: string;
+  description?: string;
+}
+
+export interface ControlRule {
+  variableId: number;
+  variableName?: string;
+  deviceType?: string;
+  actions: Record<string, number | boolean>;
+  source?: string;
+  note?: string;
 }
 
 export interface KnowledgeData {
   deviceMappings: DeviceMapping[];
+  conventions: Convention[];
+  controlRules: ControlRule[];
 }
 
 const DEFAULT_FILENAME = 'symcon-knowledge.json';
-
-function getDataDir(): string {
-  const envPath = process.env.SYMCON_KNOWLEDGE_PATH;
-  if (envPath) return dirname(envPath);
-  return join(process.cwd(), 'data');
-}
 
 function getFilePath(): string {
   const envPath = process.env.SYMCON_KNOWLEDGE_PATH;
@@ -44,17 +45,21 @@ function getFilePath(): string {
 
 export class KnowledgeStore {
   private filePath: string = getFilePath();
-  private data: KnowledgeData = { deviceMappings: [] };
+  private data: KnowledgeData = { deviceMappings: [], conventions: [], controlRules: [] };
   private loaded = false;
 
   private async ensureLoaded(): Promise<void> {
     if (this.loaded) return;
     try {
       const raw = await readFile(this.filePath, 'utf8');
-      this.data = JSON.parse(raw) as KnowledgeData;
-      if (!Array.isArray(this.data.deviceMappings)) this.data.deviceMappings = [];
+      const parsed = JSON.parse(raw) as Partial<KnowledgeData>;
+      this.data = {
+        deviceMappings: Array.isArray(parsed.deviceMappings) ? parsed.deviceMappings : [],
+        conventions: Array.isArray(parsed.conventions) ? parsed.conventions : [],
+        controlRules: Array.isArray(parsed.controlRules) ? parsed.controlRules : [],
+      };
     } catch {
-      this.data = { deviceMappings: [] };
+      this.data = { deviceMappings: [], conventions: [], controlRules: [] };
     }
     this.loaded = true;
   }
@@ -65,6 +70,8 @@ export class KnowledgeStore {
     await writeFile(this.filePath, JSON.stringify(this.data, null, 2), 'utf8');
   }
 
+  // ── DeviceMappings ──────────────────────────────────────────────────────────
+
   async getMappings(): Promise<DeviceMapping[]> {
     await this.ensureLoaded();
     return [...this.data.deviceMappings];
@@ -73,7 +80,6 @@ export class KnowledgeStore {
   async addOrUpdateMapping(mapping: Omit<DeviceMapping, 'id'> & { id?: string }): Promise<DeviceMapping> {
     await this.ensureLoaded();
     const id = mapping.id ?? this.slug(mapping.userLabel);
-    const existing = this.data.deviceMappings.find((m) => m.id === id);
     const entry: DeviceMapping = {
       id,
       userLabel: mapping.userLabel.trim(),
@@ -82,40 +88,102 @@ export class KnowledgeStore {
       path: mapping.path?.trim(),
       objectId: mapping.objectId,
     };
-    if (existing) {
-      const idx = this.data.deviceMappings.indexOf(existing);
-      this.data.deviceMappings[idx] = entry;
-    } else {
-      this.data.deviceMappings.push(entry);
-    }
+    const idx = this.data.deviceMappings.findIndex((m) => m.id === id);
+    if (idx >= 0) this.data.deviceMappings[idx] = entry;
+    else this.data.deviceMappings.push(entry);
     await this.save();
     return entry;
   }
 
-  /** Sucht anhand eines Nutzer-Phrase (z. B. "Büro Licht", "Licht im Büro") eine passende Zuordnung. */
   async resolve(userPhrase: string): Promise<DeviceMapping | null> {
     await this.ensureLoaded();
     const norm = this.normalize(userPhrase);
     if (!norm) return null;
     for (const m of this.data.deviceMappings) {
-      if (this.normalize(m.userLabel).includes(norm) || norm.includes(this.normalize(m.userLabel))) return m;
+      const mNorm = this.normalize(m.userLabel);
+      if (mNorm.includes(norm) || norm.includes(mNorm)) return m;
     }
     return null;
   }
 
+  // ── Conventions ─────────────────────────────────────────────────────────────
+
+  async getConventions(): Promise<Convention[]> {
+    await this.ensureLoaded();
+    return [...this.data.conventions];
+  }
+
+  async addOrUpdateConvention(convention: Convention): Promise<Convention> {
+    await this.ensureLoaded();
+    const entry: Convention = {
+      key: convention.key.trim(),
+      meaning: convention.meaning.trim(),
+      description: convention.description?.trim(),
+    };
+    const idx = this.data.conventions.findIndex((c) => c.key === entry.key);
+    if (idx >= 0) this.data.conventions[idx] = entry;
+    else this.data.conventions.push(entry);
+    await this.save();
+    return entry;
+  }
+
+  // ── ControlRules ────────────────────────────────────────────────────────────
+
+  async getControlRules(): Promise<ControlRule[]> {
+    await this.ensureLoaded();
+    return [...this.data.controlRules];
+  }
+
+  async addOrUpdateControlRule(rule: ControlRule): Promise<ControlRule> {
+    await this.ensureLoaded();
+    const entry: ControlRule = { ...rule };
+    const idx = this.data.controlRules.findIndex((r) => r.variableId === rule.variableId);
+    if (idx >= 0) this.data.controlRules[idx] = entry;
+    else this.data.controlRules.push(entry);
+    await this.save();
+    return entry;
+  }
+
+  async getControlRuleByVariableId(variableId: number): Promise<ControlRule | null> {
+    await this.ensureLoaded();
+    return this.data.controlRules.find((r) => r.variableId === variableId) ?? null;
+  }
+
+  /** Tauscht auf/zu-Werte (und Varianten) wenn der User sagt „das war falsch rum". */
+  async correctDirection(variableId: number, note?: string): Promise<ControlRule | null> {
+    await this.ensureLoaded();
+    const idx = this.data.controlRules.findIndex((r) => r.variableId === variableId);
+    if (idx < 0) return null;
+    const rule = { ...this.data.controlRules[idx], actions: { ...this.data.controlRules[idx].actions } };
+    if (note) rule.note = note;
+
+    const pairs = [
+      ['auf', 'zu'],
+      ['aufmachen', 'zumachen'],
+      ['open', 'close'],
+      ['ein', 'aus'],
+      ['on', 'off'],
+      ['hoch', 'runter'],
+    ];
+    for (const [a, b] of pairs) {
+      if (a in rule.actions && b in rule.actions) {
+        [rule.actions[a], rule.actions[b]] = [rule.actions[b], rule.actions[a]];
+      }
+    }
+
+    this.data.controlRules[idx] = rule;
+    await this.save();
+    return rule;
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
   private slug(label: string): string {
-    return label
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
+    return label.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   }
 
   private normalize(s: string): string {
-    return s
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, ' ');
+    return s.trim().toLowerCase().replace(/\s+/g, ' ');
   }
 }
 
