@@ -6,13 +6,69 @@
 
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, randomBytes } from 'node:crypto';
+import * as readline from 'node:readline';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { SymconClient } from './symcon/SymconClient.js';
 import { createToolHandlers } from './tools/index.js';
+
+async function runSetupWizard(): Promise<void> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const ask = (q: string): Promise<string> => new Promise(resolve => rl.question(q, resolve));
+
+  process.stdout.write('\n=== Symcon MCP Server – Setup ===\n\n');
+  process.stdout.write('Eingaben mit Enter bestätigen. Vorschlag in [Klammern] mit Enter übernehmen.\n\n');
+
+  const symconUrl = (await ask('Symcon API URL [http://127.0.0.1:3777/api/]: ')).trim() || 'http://127.0.0.1:3777/api/';
+  const symconUser = (await ask('Symcon Benutzername (leer = kein Login): ')).trim();
+  const symconPass = symconUser ? (await ask('Symcon Passwort: ')).trim() : '';
+
+  const genToken = randomBytes(32).toString('hex');
+  const tokenInput = (await ask(`MCP Auth Token [${genToken}]: `)).trim();
+  const token = tokenInput || genToken;
+
+  const portInput = (await ask('MCP Port [4096]: ')).trim();
+  const port = portInput || '4096';
+
+  const bindInput = (await ask('Bind-Adresse (0.0.0.0 = Netzwerk, 127.0.0.1 = nur lokal) [0.0.0.0]: ')).trim();
+  const bind = bindInput || '0.0.0.0';
+
+  const devInput = (await ask('Dev-Tools aktivieren? (nur Dev/Test-SymBox) [n]: ')).trim().toLowerCase();
+  const devTools = devInput === 'j' || devInput === 'y' || devInput === '1' ? '1' : '0';
+
+  rl.close();
+
+  const lines = [
+    '# Symcon MCP Server – Konfiguration',
+    `MCP_PORT=${port}`,
+    `SYMCON_API_URL=${symconUrl}`,
+    `MCP_AUTH_TOKEN=${token}`,
+    `MCP_BIND=${bind}`,
+    `MCP_DEV_TOOLS=${devTools}`,
+  ];
+  if (symconUser) {
+    lines.push(`SYMCON_API_USER=${symconUser}`);
+    lines.push(`SYMCON_API_PASSWORD=${symconPass}`);
+  }
+
+  const configPath = join(process.cwd(), 'config.env');
+  writeFileSync(configPath, lines.join('\n') + '\n', 'utf8');
+
+  process.stdout.write(`\nconfig.env gespeichert: ${configPath}\n`);
+  process.stdout.write(`\nMCP Auth Token (für Claude Desktop): ${token}\n`);
+  process.stdout.write('\nSetup abgeschlossen. Server starten: symcon-mcp-server.exe\n\n');
+}
+
+if (process.argv.includes('--setup')) {
+  runSetupWizard().then(() => process.exit(0)).catch(err => { process.stderr.write(String(err) + '\n'); process.exit(1); });
+} else {
+  startServer();
+}
+
+async function startServer() {
 
 /**
  * Lädt config.env / local-config.env (KEY=VALUE, # Kommentare) aus dem Arbeitsverzeichnis,
@@ -191,7 +247,8 @@ async function main(): Promise<void> {
   });
 }
 
-main().catch((err) => {
-  process.stderr.write(String(err) + '\n');
-  process.exit(1);
-});
+  main().catch((err) => {
+    process.stderr.write(String(err) + '\n');
+    process.exit(1);
+  });
+}
